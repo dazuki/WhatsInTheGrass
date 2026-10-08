@@ -1,0 +1,8 @@
+﻿<Project>
+  <PropertyGroup>
+    <ModZipPath>$(MSBuildThisFileDirectory)/_debugs</ModZipPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <ModZipPath>$(MSBuildThisFileDirectory)/_releases</ModZipPath>
+  </PropertyGroup>
+</Project>

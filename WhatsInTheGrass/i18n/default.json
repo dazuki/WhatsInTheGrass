@@ -1,0 +1,11 @@
+﻿{
+  "Config.FadeOverForage.Name": "Fade over forage",
+  "Config.FadeOverForage.Tooltip": "Fade grass that covers forage, like truffles dug up by pigs.",
+  "Config.FadeOverAnimals.Name": "Fade over animals",
+  "Config.FadeOverAnimals.Tooltip": "Fade grass around farm animals that are outside.",
+  "Config.GrassOpacity.Name": "Grass opacity",
+  "Config.ForageOpacity.Tooltip": "How visible grass covering forage stays.",
+  "Config.AnimalOpacity.Tooltip": "How visible grass around animals stays.",
+  "LauncherDrawer.EntryName": "WitG?",
+  "LauncherDrawer.EntryDescription": "Open What's in the Grass? settings"
+}

@@ -1,0 +1,13 @@
+﻿{
+  "Name": "What's in the Grass?",
+  "Author": "DazUki",
+  "Version": "%ProjectVersion%",
+  "Description": "Fades tall grass that hides forage and farm animals, so truffles and your animals stay visible.",
+  "UniqueID": "DazUki.WhatsInTheGrass",
+  "EntryDll": "WhatsInTheGrass.dll",
+  "MinimumApiVersion": "4.1.10",
+  "Dependencies": [
+    { "UniqueID": "spacechase0.GenericModConfigMenu", "IsRequired": false }
+  ],
+  "UpdateKeys": ["Nexus:53606", "GitHub:dazuki/WhatsInTheGrass"]
+}

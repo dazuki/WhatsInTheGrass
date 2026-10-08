@@ -1,0 +1,20 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+_debugs/
+_releases/
+*.user
+*.suo
+*.log
+
+# IDE
+.vs/
+.idea/
+.vscode/
+*.DotSettings.user
+
+# Local GamePath override (see stardewvalley.targets)
+*.targets
+
+# csharpier
+.csharpierignore
