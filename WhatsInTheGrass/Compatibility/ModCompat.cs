@@ -1,4 +1,4 @@
-﻿namespace WhatsInTheGrass;
+﻿namespace WhatsInTheGrass.Compatibility;
 
 internal static class ModCompat
 {

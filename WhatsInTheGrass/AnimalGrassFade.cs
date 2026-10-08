@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using StardewValley;
 
-namespace WhatsInTheGrass.Patches;
+namespace WhatsInTheGrass;
 
 /// <summary>Per-tile fade progress (0-1) for grass around outdoor farm animals, eased so it doesn't pop as they walk.</summary>
 internal static class AnimalGrassFade
