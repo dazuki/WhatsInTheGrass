@@ -6,6 +6,7 @@
   "Config.GrassOpacity.Name": "Grass opacity",
   "Config.ForageOpacity.Tooltip": "How visible grass covering forage stays.",
   "Config.AnimalOpacity.Tooltip": "How visible grass around animals stays.",
+  // "WitG?" = "What's in the Grass?"
   "LauncherDrawer.EntryName": "WitG?",
   "LauncherDrawer.EntryDescription": "Open What's in the Grass? settings"
 }

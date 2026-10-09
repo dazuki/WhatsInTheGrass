@@ -45,7 +45,6 @@ internal static class GrassFadePatch
     );
   }
 
-  // Degrade to unfaded grass rather than crashing Entry if a target changes
   private static void TryPatch(Harmony harmony, string targetName, Func<MethodInfo?> getTarget)
   {
     try
@@ -71,14 +70,12 @@ internal static class GrassFadePatch
     }
   }
 
-  // Drops the cached Grass so it doesn't keep the old save's location alive on the title screen
   public static void ClearCache()
   {
     _lastGrass = null;
     _lastTick = -1;
   }
 
-  // Grass.draw asks once per blade (up to 4); reuse the tile's result for the rest
   public static Color GetGrassColor(Grass grass)
   {
     if (ReferenceEquals(grass, _lastGrass) && _lastTick == Game1.ticks)
@@ -143,7 +140,6 @@ internal static class GrassFadePatch
 
   private static bool HasForage(GameLocation location, Vector2 tile)
   {
-    // Artifact and seed spots are spawned too, but aren't hidden pickups
     return location.objects.TryGetValue(tile, out Object? obj)
       && obj != null
       && obj.IsSpawnedObject
@@ -201,7 +197,6 @@ internal static class GrassFadePatch
     }
   }
 
-  // `this` in Grass.draw, `__instance` in another mod's static prefix
   private static CodeInstruction? LoadGrassArgument(MethodBase method)
   {
     if (!method.IsStatic && typeof(Grass).IsAssignableFrom(method.DeclaringType))

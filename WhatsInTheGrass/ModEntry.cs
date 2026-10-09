@@ -33,7 +33,6 @@ internal sealed class ModEntry : Mod
 
   private void OnAssetRequested(object? sender, AssetRequestedEventArgs e)
   {
-    // Gated on GMCM since the action opens our GMCM page.
     if (
       !e.NameWithoutLocale.IsEquivalentTo(LauncherDrawerDictAssetName)
       || !Helper.ModRegistry.IsLoaded(ModCompat.LauncherDrawer)

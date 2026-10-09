@@ -28,7 +28,6 @@ internal static class AnimalGrassFade
   // Once per tick instead of scanning every animal for every grass tile
   private static void Update(GameLocation location, LocationState state)
   {
-    // A stale state (first visit, returning later, toggled back on) snaps to the current tiles
     int elapsed = Game1.ticks - state.Tick;
     float step = state.Tick < 0 || elapsed <= 0 ? 1f : Math.Min(1f, elapsed / FadeTicks);
     state.Tick = Game1.ticks;
@@ -72,8 +71,7 @@ internal static class AnimalGrassFade
         continue;
       }
 
-      // Sprite columns (wide animals span 2 tiles), feet rows plus the row below,
-      // whose blades reach up over the animal
+      // Sprite columns (wide animals span 2 tiles), feet rows plus the row below, whose blades reach up over the animal
       Rectangle box = animal.GetBoundingBox();
       int left = (int)animal.Position.X / Game1.tileSize;
       int right = ((int)animal.Position.X + animal.Sprite.SpriteWidth * 4 - 1) / Game1.tileSize;
