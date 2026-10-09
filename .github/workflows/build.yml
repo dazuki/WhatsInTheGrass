@@ -23,6 +23,7 @@ jobs:
         run: dotnet build --configuration Release
 
       - name: Upload release zips
+        id: upload
         uses: Pathoschild/SMAPI-ModBuildWorkflow/upload-release-artifacts@v1
         with:
           create_attestations: true
@@ -32,11 +33,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
+          ATTESTATION_URL: ${{ steps.upload.outputs.attestation-url }}
         run: |
           prev=$(git describe --tags --abbrev=0 --match '*.*.*' "$TAG^" 2>/dev/null || true)
           if [ -n "$prev" ]; then
             notes="**Full Changelog**: https://github.com/$REPO/compare/$prev...$TAG"
           else
             notes="**Full Changelog**: https://github.com/$REPO/commits/$TAG"
+          fi
+          if [ -n "$ATTESTATION_URL" ]; then
+            notes="$notes"$'\n\n'"[Attestation]($ATTESTATION_URL)"
           fi
           gh release create "$TAG" _releases/*.zip --title "$TAG" --notes "$notes"
