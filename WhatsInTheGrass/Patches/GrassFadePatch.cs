@@ -8,19 +8,22 @@ using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.TerrainFeatures;
-using Object = StardewValley.Object;
 
 namespace WhatsInTheGrass.Patches;
 
-/// <summary>Fades grass that covers spawned forage (e.g. pig truffles) or farm animals so they show through.</summary>
+/// <summary>Fades grass covering spawned forage or farm animals.</summary>
 internal static class GrassFadePatch
 {
-  // Grass blades overflow into the tiles above and beside them
-  private static readonly Vector2[] ForageOffsets = [new(0, 0), new(0, -1), new(-1, 0), new(1, 0)];
+  // Blade draw position is its base
+  private static readonly Vector2 BladeCenterOffset = new(0f, -32f);
 
+  // Blade centers can sit half a tile outside their tile
+  private const float GrassReach = 32f;
+
+  // Shared by all blades of the same grass this tick
+  private static readonly List<FadeSource> Nearby = [];
   private static Grass? _lastGrass;
   private static int _lastTick = -1;
-  private static Color _lastColor;
 
   public static void Initialize(Harmony harmony, bool moreGrassLoaded)
   {
@@ -76,78 +79,66 @@ internal static class GrassFadePatch
     _lastTick = -1;
   }
 
-  public static Color GetGrassColor(Grass grass)
+  public static Color GetBladeColor(Grass grass, Vector2 bladePosition)
   {
-    if (ReferenceEquals(grass, _lastGrass) && _lastTick == Game1.ticks)
+    if (!ReferenceEquals(grass, _lastGrass) || _lastTick != Game1.ticks)
     {
-      return _lastColor;
+      _lastGrass = grass;
+      _lastTick = Game1.ticks;
+      CollectNearby(grass);
     }
 
-    _lastGrass = grass;
-    _lastTick = Game1.ticks;
-    _lastColor = ComputeGrassColor(grass);
-    return _lastColor;
-  }
-
-  private static Color ComputeGrassColor(Grass grass)
-  {
-    ModConfig config = ModEntry.Config;
-    if (
-      !(config.FadeOverForage || config.FadeOverAnimals)
-      || grass.Location is not GameLocation location
-    )
+    if (Nearby.Count == 0)
     {
       return Color.White;
     }
 
-    Vector2 tile = grass.Tile;
+    Vector2 center = bladePosition + BladeCenterOffset;
     float opacity = 1f;
-    if (config.FadeOverForage && IsNearForage(location, tile))
+    foreach (FadeSource source in Nearby)
     {
-      opacity = ToOpacity(config.ForageOpacityPercent);
-    }
-
-    if (config.FadeOverAnimals)
-    {
-      float progress = AnimalGrassFade.GetProgress(location, tile);
-      if (progress > 0f)
+      float t = (Vector2.Distance(center, source.Center) - source.Radius) / FadeSource.FadeWidth;
+      if (t < 1f)
       {
-        float animalOpacity = MathHelper.Lerp(1f, ToOpacity(config.AnimalOpacityPercent), progress);
-        opacity = Math.Min(opacity, animalOpacity);
+        opacity = Math.Min(opacity, MathHelper.SmoothStep(source.MinOpacity, 1f, Math.Max(0f, t)));
       }
     }
 
     return Color.White * opacity;
   }
 
-  private static float ToOpacity(int percent)
+  // Fallback without blade position, fades the whole tuft
+  public static Color GetGrassColor(Grass grass)
   {
-    return Math.Clamp(percent, 0, 100) / 100f;
+    return GetBladeColor(grass, grass.Tile * Game1.tileSize + new Vector2(32f, 64f));
   }
 
-  private static bool IsNearForage(GameLocation location, Vector2 tile)
+  private static void CollectNearby(Grass grass)
   {
-    foreach (Vector2 offset in ForageOffsets)
+    Nearby.Clear();
+    ModConfig config = ModEntry.Config;
+    if (
+      !(config.FadeOverForage || config.FadeOverAnimals)
+      || grass.Location is not GameLocation location
+    )
     {
-      if (HasForage(location, tile + offset))
-      {
-        return true;
-      }
+      return;
     }
 
-    return false;
+    Vector2 min = grass.Tile * Game1.tileSize - new Vector2(GrassReach);
+    Vector2 max = min + new Vector2(Game1.tileSize + GrassReach * 2);
+    foreach (FadeSource source in GrassFadeSources.Get(location))
+    {
+      Vector2 closest = Vector2.Clamp(source.Center, min, max);
+      float outer = source.OuterRadius;
+      if (Vector2.DistanceSquared(closest, source.Center) < outer * outer)
+      {
+        Nearby.Add(source);
+      }
+    }
   }
 
-  private static bool HasForage(GameLocation location, Vector2 tile)
-  {
-    return location.objects.TryGetValue(tile, out Object? obj)
-      && obj != null
-      && obj.IsSpawnedObject
-      && !obj.bigCraftable.Value
-      && obj.QualifiedItemId is not ("(O)590" or "(O)SeedSpot");
-  }
-
-  /// <summary>Replaces the Color.White grass tint with GetGrassColor(grass).</summary>
+  /// <summary>Replaces the Color.White blade tint with GetBladeColor.</summary>
   private static IEnumerable<CodeInstruction> GrassDraw_Transpiler(
     IEnumerable<CodeInstruction> instructions,
     MethodBase original
@@ -165,19 +156,60 @@ internal static class GrassFadePatch
 
       var codes = new List<CodeInstruction>(instructions);
       MethodInfo colorWhite = AccessTools.PropertyGetter(typeof(Color), nameof(Color.White));
-      MethodInfo getGrassColor = AccessTools.Method(typeof(GrassFadePatch), nameof(GetGrassColor));
+      MethodInfo globalToLocal = AccessTools.Method(
+        typeof(Game1),
+        nameof(Game1.GlobalToLocal),
+        [typeof(xTile.Dimensions.Rectangle), typeof(Vector2)]
+      );
 
       bool patched = false;
       for (int i = 0; i < codes.Count; i++)
       {
-        if (codes[i].Calls(colorWhite))
+        if (!codes[i].Calls(colorWhite))
         {
-          loadGrass.MoveLabelsFrom(codes[i]);
-          codes[i] = new CodeInstruction(OpCodes.Call, getGrassColor);
-          codes.Insert(i, loadGrass);
-          patched = true;
-          break;
+          continue;
         }
+
+        // Blade position is the local passed to GlobalToLocal
+        CodeInstruction? loadPosition = null;
+        for (int j = i - 1; j > 0; j--)
+        {
+          if (codes[j].Calls(globalToLocal))
+          {
+            OpCode load = codes[j - 1].opcode;
+            if (codes[j - 1].IsLdloc() && load != OpCodes.Ldloca && load != OpCodes.Ldloca_S)
+            {
+              loadPosition = new CodeInstruction(codes[j - 1].opcode, codes[j - 1].operand);
+            }
+
+            break;
+          }
+        }
+
+        loadGrass.MoveLabelsFrom(codes[i]);
+        if (loadPosition != null)
+        {
+          codes[i] = new CodeInstruction(
+            OpCodes.Call,
+            AccessTools.Method(typeof(GrassFadePatch), nameof(GetBladeColor))
+          );
+          codes.InsertRange(i, [loadGrass, loadPosition]);
+        }
+        else
+        {
+          ModEntry.MonitorObject.Log(
+            $"No blade position in {methodName}, fading whole grass tiles",
+            LogLevel.Trace
+          );
+          codes[i] = new CodeInstruction(
+            OpCodes.Call,
+            AccessTools.Method(typeof(GrassFadePatch), nameof(GetGrassColor))
+          );
+          codes.Insert(i, loadGrass);
+        }
+
+        patched = true;
+        break;
       }
 
       if (!patched)
